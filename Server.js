@@ -9,6 +9,7 @@ const express = require('express')
 const path = require('path')
 const mongoose = require('mongoose')
 const User = require('./models/User');
+var router = express.Router();
 
 const app = express()
 app.use(express.json());
@@ -26,34 +27,71 @@ mongoose.connect('mongodb://localhost/Rest-API' , { useNewUrlParser: true, useUn
 
 })
 
-let Users = [];
+
 
 //get all User
 app.get('/', (req, res) => {
-  res.send(Users.map(user=>user))
+  User.find({},(err, result)=> {
+    err ? res.status(404).send(err) : res.status(200).send(result);
+})
 })
 
 //insert User
-app.post('/user/register', (req , res)=>{
+app.post('/register', (req , res)=>{
     const newUser = new User(req.body)
-    Users = [...Users , newUser];
-    console.log(Users)
-    newUser ? res.status(200).send(newUser) : res.status(404).send('Insert User');
+    newUser
+        .save()
+        .then((result) => {
+          res.status(200).send(result)
+        })
+         .catch((err) => {
+          res.status(404).json({
+          message: err.message,
+          });
+         });
 })
 
 //Update User
 app.put('/updateUser/:userId',(req , res)=>{
   const userId = req.params.userId;
   const userUpdate = req.body;
-  const user = Users.find(user => user._id == userId);
-  user ? res.status(200).send(Users.map(user => user._id == userId ? {...user , ...userUpdate } : user)) : res.status(404).send('Update User faild')
+  User.findOneAndUpdate({ _id: userId}, { $set: userUpdate })
+  .then((result) => {
+    if (result) {
+      res.status(202).send(result)
+    } else {
+      res.status(404).json({
+        message: "user not found",
+      });
+    }
+  })
+  .catch((err) => {
+    res.status(404).json({
+      message: err.message,
+    });
+  });
 })
 
 //Delete User
 app.delete('/deleteUser/:userId',(req , res)=>{
   const userId = req.params.userId;
-  const user = Users.find(user => user._id == userId);
-  user ? res.status(200).send(Users.map(user => user._id !== userId ? user : null )):res.status(404).send('Delete User faild')
+  User.findOneAndDelete({ _id: userId })
+  .then((result) => {
+    if (result) {
+      res.status(200).json({
+        message: "User Deleted",
+      });
+    } else {
+      res.status(404).json({
+        message: "user not found",
+      });
+    }
+  })
+  .catch((err) => {
+    res.status(404).json({
+      message: err.message,
+    });
+  });
 })
 
 //Connect server
